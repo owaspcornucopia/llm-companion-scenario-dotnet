@@ -1,0 +1,5 @@
+<Project>
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'Companion.Api' and Exists('$(MSBuildThisFileDirectory)tests\Companion.Api.Tests\TestShims\PromptConstants.cs')">
+    <Compile Include="$(MSBuildThisFileDirectory)tests\Companion.Api.Tests\TestShims\PromptConstants.cs" Link="TestShims\PromptConstants.cs" />
+  </ItemGroup>
+</Project>

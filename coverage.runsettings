@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <ExcludeByFile>**/obj/**,**/tests/**</ExcludeByFile>
+          <Exclude>[Companion.Api]Companion.Api.OnnxTextGeneratorRuntime,[Companion.Api]Companion.Api.OnnxTextGeneratorRuntimeFactory</Exclude>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

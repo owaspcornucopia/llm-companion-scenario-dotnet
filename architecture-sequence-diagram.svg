@@ -1,0 +1,215 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1220" viewBox="0 0 1800 1220" role="img" aria-labelledby="title desc">
+  <title id="title">AI Anti-Fraud 3.0 Sequence Diagram</title>
+  <desc id="desc">Sequence diagram showing startup model download and runtime request handling across API Proxy, app replicas, model service, and shared DB.</desc>
+  <defs>
+    <style>
+      text {
+        font-family: "Segoe UI", Arial, sans-serif;
+        fill: #17324d;
+      }
+      .title {
+        font-size: 28px;
+        font-weight: 700;
+      }
+      .subtitle {
+        font-size: 14px;
+        fill: #4d6780;
+      }
+      .actor {
+        fill: #edf4fb;
+        stroke: #4f7aa3;
+        stroke-width: 2;
+      }
+      .service {
+        fill: #fff7e6;
+        stroke: #ca8a04;
+        stroke-width: 2;
+      }
+      .store {
+        fill: #eefbf3;
+        stroke: #2f855a;
+        stroke-width: 2;
+      }
+      .label {
+        font-size: 17px;
+        font-weight: 600;
+      }
+      .small {
+        font-size: 13px;
+        fill: #536b83;
+      }
+      .lifeline {
+        stroke: #8aa1b8;
+        stroke-width: 2;
+        stroke-dasharray: 8 6;
+      }
+      .message {
+        stroke: #355c7d;
+        stroke-width: 3;
+        fill: none;
+      }
+      .return {
+        stroke: #6c7f91;
+        stroke-width: 2;
+        stroke-dasharray: 7 5;
+        fill: none;
+      }
+      .note {
+        fill: #fef3c7;
+        stroke: #d97706;
+        stroke-width: 2;
+      }
+      .note-text {
+        font-size: 15px;
+        font-weight: 600;
+      }
+      .group {
+        fill: none;
+        stroke: #6f8aa3;
+        stroke-width: 2;
+        stroke-dasharray: 10 8;
+      }
+      .group-label {
+        font-size: 18px;
+        font-weight: 700;
+        fill: #294b6b;
+      }
+      .msg-label {
+        font-size: 13px;
+        font-weight: 600;
+        fill: #1f4568;
+      }
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#355c7d"/>
+    </marker>
+    <marker id="returnArrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#6c7f91"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1800" height="1220" fill="#f8fbfd"/>
+  <text x="60" y="55" class="title">AI Anti-Fraud 3.0 Sequence Diagram</text>
+  <text x="60" y="82" class="subtitle">Startup download flow and runtime request flow across the system deployment</text>
+
+  <rect x="40" y="120" width="1720" height="300" class="group"/>
+  <text x="60" y="150" class="group-label">Startup and Model Preparation</text>
+
+  <rect x="40" y="450" width="1720" height="710" class="group"/>
+  <text x="60" y="480" class="group-label">Runtime Request Handling</text>
+
+  <rect x="70" y="170" width="130" height="64" rx="14" ry="14" class="actor"/>
+  <text x="135" y="205" text-anchor="middle" class="label">Client</text>
+
+  <rect x="235" y="170" width="130" height="64" rx="14" ry="14" class="actor"/>
+  <text x="300" y="198" text-anchor="middle" class="label">Hugging Face</text>
+  <text x="300" y="218" text-anchor="middle" class="small">External Hub</text>
+
+  <rect x="400" y="170" width="130" height="64" rx="14" ry="14" class="service"/>
+  <text x="465" y="205" text-anchor="middle" class="label">Downloader</text>
+
+  <rect x="565" y="170" width="130" height="64" rx="14" ry="14" class="service"/>
+  <text x="630" y="205" text-anchor="middle" class="label">API Proxy</text>
+
+  <rect x="730" y="170" width="130" height="64" rx="14" ry="14" class="service"/>
+  <text x="795" y="198" text-anchor="middle" class="label">App 1</text>
+  <text x="795" y="218" text-anchor="middle" class="small">/api/fraud</text>
+
+  <rect x="895" y="170" width="130" height="64" rx="14" ry="14" class="service"/>
+  <text x="960" y="198" text-anchor="middle" class="label">App 2</text>
+  <text x="960" y="218" text-anchor="middle" class="small">/api/fraud</text>
+
+  <rect x="1060" y="170" width="130" height="64" rx="14" ry="14" class="service"/>
+  <text x="1125" y="198" text-anchor="middle" class="label">App 3</text>
+  <text x="1125" y="218" text-anchor="middle" class="small">/api/fraud</text>
+
+  <rect x="1225" y="170" width="150" height="64" rx="14" ry="14" class="service"/>
+  <text x="1300" y="198" text-anchor="middle" class="label">Model Service</text>
+  <text x="1300" y="218" text-anchor="middle" class="small">/generate, /health</text>
+
+  <rect x="1410" y="170" width="150" height="64" rx="14" ry="14" class="store"/>
+  <text x="1485" y="198" text-anchor="middle" class="label">Base Model</text>
+  <text x="1485" y="218" text-anchor="middle" class="small">LLM</text>
+
+  <rect x="1595" y="170" width="130" height="64" rx="14" ry="14" class="store"/>
+  <text x="1660" y="198" text-anchor="middle" class="label">Adapter</text>
+  <text x="1660" y="218" text-anchor="middle" class="small">pwnednext</text>
+
+  <rect x="1505" y="276" width="180" height="72" rx="14" ry="14" class="store"/>
+  <text x="1595" y="309" text-anchor="middle" class="label">Shared DB</text>
+
+  <line x1="135" y1="234" x2="135" y2="1135" class="lifeline"/>
+  <line x1="300" y1="234" x2="300" y2="1135" class="lifeline"/>
+  <line x1="465" y1="234" x2="465" y2="1135" class="lifeline"/>
+  <line x1="630" y1="234" x2="630" y2="1135" class="lifeline"/>
+  <line x1="795" y1="234" x2="795" y2="1135" class="lifeline"/>
+  <line x1="960" y1="234" x2="960" y2="1135" class="lifeline"/>
+  <line x1="1125" y1="234" x2="1125" y2="1135" class="lifeline"/>
+  <line x1="1300" y1="234" x2="1300" y2="1135" class="lifeline"/>
+  <line x1="1485" y1="234" x2="1485" y2="1135" class="lifeline"/>
+  <line x1="1660" y1="234" x2="1660" y2="1135" class="lifeline"/>
+  <line x1="1595" y1="348" x2="1595" y2="1135" class="lifeline"/>
+
+  <rect x="555" y="262" width="405" height="60" rx="12" ry="12" class="note"/>
+  <text x="757" y="298" text-anchor="middle" class="note-text">System waits for downloader before model starts</text>
+
+  <line x1="465" y1="350" x2="300" y2="350" class="message" marker-end="url(#arrow)"/>
+  <text x="382" y="337" text-anchor="middle" class="msg-label">hf download base model</text>
+
+  <line x1="300" y1="390" x2="465" y2="390" class="return" marker-end="url(#returnArrow)"/>
+  <text x="382" y="377" text-anchor="middle" class="msg-label">LLM model files</text>
+
+  <line x1="465" y1="430" x2="1485" y2="430" class="message" marker-end="url(#arrow)"/>
+  <text x="975" y="417" text-anchor="middle" class="msg-label">Write base model files to mounted directory</text>
+
+  <line x1="465" y1="480" x2="300" y2="480" class="message" marker-end="url(#arrow)"/>
+  <text x="382" y="467" text-anchor="middle" class="msg-label">hf download adapter</text>
+
+  <line x1="300" y1="520" x2="465" y2="520" class="return" marker-end="url(#returnArrow)"/>
+  <text x="382" y="507" text-anchor="middle" class="msg-label">Adapter files</text>
+
+  <line x1="465" y1="550" x2="1660" y2="550" class="message" marker-end="url(#arrow)"/>
+  <text x="1062" y="537" text-anchor="middle" class="msg-label">Write adapter files to mounted directory</text>
+
+  <line x1="1300" y1="590" x2="1485" y2="590" class="message" marker-end="url(#arrow)"/>
+  <text x="1392" y="577" text-anchor="middle" class="msg-label">Load base model</text>
+
+  <line x1="1300" y1="630" x2="1660" y2="630" class="message" marker-end="url(#arrow)"/>
+  <text x="1480" y="617" text-anchor="middle" class="msg-label">Load PEFT adapter</text>
+
+  <rect x="495" y="697" width="460" height="62" rx="12" ry="12" class="note"/>
+  <text x="725" y="734" text-anchor="middle" class="note-text">API Proxy load balances across the three app replicas</text>
+
+  <line x1="135" y1="790" x2="630" y2="790" class="message" marker-end="url(#arrow)"/>
+  <text x="382" y="777" text-anchor="middle" class="msg-label">GET or POST /api/fraud + token + question</text>
+
+  <line x1="630" y1="830" x2="960" y2="830" class="message" marker-end="url(#arrow)"/>
+  <text x="795" y="817" text-anchor="middle" class="msg-label">Proxy request to one app instance</text>
+
+  <line x1="960" y1="870" x2="1300" y2="870" class="message" marker-end="url(#arrow)"/>
+  <text x="1130" y="857" text-anchor="middle" class="msg-label">POST /generate with tool-call prompt</text>
+
+  <line x1="1300" y1="910" x2="960" y2="910" class="return" marker-end="url(#returnArrow)"/>
+  <text x="1130" y="897" text-anchor="middle" class="msg-label">Return investigation_fraud tool call</text>
+
+  <line x1="960" y1="950" x2="1595" y2="950" class="message" marker-end="url(#arrow)"/>
+  <text x="1277" y="937" text-anchor="middle" class="msg-label">Execute generated SQL against shared DB</text>
+
+  <line x1="1595" y1="990" x2="960" y2="990" class="return" marker-end="url(#returnArrow)"/>
+  <text x="1277" y="977" text-anchor="middle" class="msg-label">Return investigation results</text>
+
+  <line x1="960" y1="1030" x2="1300" y2="1030" class="message" marker-end="url(#arrow)"/>
+  <text x="1130" y="1017" text-anchor="middle" class="msg-label">POST /generate with final-answer prompt</text>
+
+  <line x1="1300" y1="1070" x2="960" y2="1070" class="return" marker-end="url(#returnArrow)"/>
+  <text x="1130" y="1057" text-anchor="middle" class="msg-label">Return final answer</text>
+
+  <line x1="960" y1="1110" x2="630" y2="1110" class="return" marker-end="url(#returnArrow)"/>
+  <text x="795" y="1097" text-anchor="middle" class="msg-label">JSON response</text>
+
+  <line x1="630" y1="1140" x2="135" y2="1140" class="return" marker-end="url(#returnArrow)"/>
+  <text x="382" y="1127" text-anchor="middle" class="msg-label">Final JSON response</text>
+
+  <rect x="875" y="742" width="465" height="62" rx="12" ry="12" class="note"/>
+  <text x="1107" y="779" text-anchor="middle" class="note-text">App 1 and App 3 follow the same sequence as App 2</text>
+</svg>

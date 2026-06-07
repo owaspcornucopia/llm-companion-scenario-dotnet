@@ -1,0 +1,77 @@
+name: Pull Request Status Check
+
+on:
+  pull_request:
+
+jobs:
+  coverage:
+    name: Coverage Gate
+    runs-on: ubuntu-latest
+    env:
+      DOTNET_VERSION: '8.0.x'
+      COVERAGE_THRESHOLD: '95'
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install test dependencies
+        run: |
+          dotnet restore ./tests/Companion.Api.Tests/Companion.Api.Tests.csproj
+
+      - name: Run unit tests with coverage gate
+        run: |
+          dotnet test ./tests/Companion.Api.Tests/Companion.Api.Tests.csproj \
+            --configuration Release \
+            --collect:"XPlat Code Coverage" \
+            --settings ./coverage.runsettings \
+            --results-directory ./TestResults/coverage-filtered
+
+      - name: Enforce coverage threshold
+        shell: python
+        run: |
+          import os
+          import pathlib
+          import sys
+          import xml.etree.ElementTree as ET
+
+          threshold = float(os.environ["COVERAGE_THRESHOLD"])
+          root = pathlib.Path("TestResults/coverage-filtered")
+          reports = sorted(root.glob("**/coverage.cobertura.xml"))
+
+          if not reports:
+              print("No coverage.cobertura.xml report was generated.", file=sys.stderr)
+              sys.exit(1)
+
+          report = reports[0]
+          coverage = ET.parse(report).getroot()
+          line_rate = float(coverage.attrib["line-rate"])
+          line_percent = line_rate * 100
+
+          print(f"Using coverage report: {report}")
+          print(f"Line coverage: {line_percent:.2f}%")
+
+          if line_percent < threshold:
+              print(
+                  f"Coverage gate failed: {line_percent:.2f}% is below {threshold:.2f}%.",
+                  file=sys.stderr,
+              )
+              sys.exit(1)
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobertura-coverage
+          path: ./TestResults/coverage-filtered/**/coverage.cobertura.xml
+          if-no-files-found: error

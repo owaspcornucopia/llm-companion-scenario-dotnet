@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Companion.ModelPrep</AssemblyName>
+    <RootNamespace>Companion.ModelPrep</RootNamespace>
+  </PropertyGroup>
+</Project>
