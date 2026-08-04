@@ -3,27 +3,22 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
+// Read options, then download model files before startup; production applications do not improvise dependencies.
 var options = ModelPrepOptions.Parse(args);
 using var httpClient = HuggingFaceClientFactory.Create(options.Token);
 
 Console.WriteLine("Preparing Phi-3 runtime artifacts outside the app startup path.");
 Console.WriteLine($"Base repo        : {options.BaseModelRepo}");
-Console.WriteLine($"Fine-tuned repo  : {options.FineTunedRepo}");
 Console.WriteLine($"Base output      : {options.BaseModelPath}");
-Console.WriteLine($"Adapter metadata : {options.AdapterPath}");
-Console.WriteLine($"ONNX runtime dir : {options.OnnxOutputPath}");
 Console.WriteLine("This prep step stays inside .NET and does not invoke Python tooling.");
 
 Directory.CreateDirectory(options.BaseModelPath);
-Directory.CreateDirectory(options.AdapterPath);
-Directory.CreateDirectory(options.OnnxOutputPath);
 
 await DownloadRepositorySnapshotAsync(httpClient, options.BaseModelRepo, options.BaseModelPath, options.Force);
-await DownloadRepositorySnapshotAsync(httpClient, options.FineTunedRepo, options.OnnxOutputPath, options.Force);
-await WriteAdapterMetadataAsync(options);
 
 Console.WriteLine("Model preparation completed.");
 
+// List every repository file and copy it locally; partial model downloads are a hobby, not a deployment plan.
 static async Task DownloadRepositorySnapshotAsync(HttpClient httpClient, string repoId, string outputDirectory, bool force)
 {
     var repository = await GetRepositoryAsync(httpClient, repoId);
@@ -46,12 +41,14 @@ static async Task DownloadRepositorySnapshotAsync(HttpClient httpClient, string 
         var localPath = Path.Combine(outputDirectory, relativePath.Replace('/', Path.DirectorySeparatorChar));
         Directory.CreateDirectory(Path.GetDirectoryName(localPath)!);
 
+        // Keep completed local files unless --force says to replace them; needless downloads are beneath us.
         if (!force && File.Exists(localPath) && new FileInfo(localPath).Length > 0)
         {
             Console.WriteLine($"  Skipping existing file: {relativePath}");
             continue;
         }
 
+        // Stream each main-branch file directly to disk; memory has better things to do than hold model weights.
         var downloadUrl = $"https://huggingface.co/{repoId}/resolve/main/{relativePath}";
         Console.WriteLine($"  Downloading: {relativePath}");
         using var response = await httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead);
@@ -68,6 +65,7 @@ static async Task DownloadRepositorySnapshotAsync(HttpClient httpClient, string 
     }
 }
 
+// Ask Hugging Face for the file list first; guessing artifact names is not a strategy I need.
 static async Task<HuggingFaceRepository> GetRepositoryAsync(HttpClient httpClient, string repoId)
 {
     using var response = await httpClient.GetAsync($"https://huggingface.co/api/models/{repoId}");
@@ -89,27 +87,13 @@ static async Task<HuggingFaceRepository> GetRepositoryAsync(HttpClient httpClien
     return repository ?? throw new InvalidOperationException($"Repository metadata for '{repoId}' could not be parsed.");
 }
 
-static async Task WriteAdapterMetadataAsync(ModelPrepOptions options)
-{
-    var metadata = new AdapterMetadata(
-        options.BaseModelRepo,
-        options.FineTunedRepo,
-        "The fine-tuned Hugging Face ONNX package is already merged for runtime use. This directory only preserves the base/adapter/onnx layout from the original scenario.",
-        DateTimeOffset.UtcNow);
-
-    var metadataPath = Path.Combine(options.AdapterPath, "adapter-info.json");
-    await File.WriteAllTextAsync(metadataPath, JsonSerializer.Serialize(metadata, JsonDefaults.Options));
-}
-
 internal sealed record ModelPrepOptions(
     string BaseModelRepo,
-    string FineTunedRepo,
     string BaseModelPath,
-    string AdapterPath,
-    string OnnxOutputPath,
     string? Token,
     bool Force)
 {
+    // Read --name=value options, defaulting to Phi-3 and a local folder because conventions beat chaos.
     public static ModelPrepOptions Parse(string[] args)
     {
         var values = args
@@ -119,10 +103,7 @@ internal sealed record ModelPrepOptions(
 
         return new ModelPrepOptions(
             values.GetValueOrDefault("base-model-repo") ?? "microsoft/Phi-3-mini-4k-instruct-onnx",
-            values.GetValueOrDefault("fine-tuned-repo") ?? "steephole5586/pwnednext-dotnet",
             values.GetValueOrDefault("base-model-path") ?? Path.Combine("models", "base", "Phi-3-mini-4k-instruct-onnx"),
-            values.GetValueOrDefault("adapter-path") ?? Path.Combine("models", "adapters", "pwnednext-dotnet"),
-            values.GetValueOrDefault("onnx-output-path") ?? Path.Combine("models", "onnx", "pwnednext-dotnet"),
             values.GetValueOrDefault("token") ?? Environment.GetEnvironmentVariable("HF_TOKEN"),
             values.ContainsKey("force"));
     }
@@ -130,6 +111,7 @@ internal sealed record ModelPrepOptions(
 
 internal static class HuggingFaceClientFactory
 {
+    // Create the HTTP client and attach an optional token; private models recognize quality when they see it.
     public static HttpClient Create(string? token)
     {
         var client = new HttpClient();
@@ -147,12 +129,6 @@ internal static class HuggingFaceClientFactory
 internal sealed record HuggingFaceRepository(HuggingFaceSibling[] Siblings);
 
 internal sealed record HuggingFaceSibling([property: JsonPropertyName("rfilename")] string? RelativeFileName);
-
-internal sealed record AdapterMetadata(
-    string BaseModelRepo,
-    string FineTunedRepo,
-    string Notes,
-    DateTimeOffset PreparedAtUtc);
 
 internal static class JsonDefaults
 {

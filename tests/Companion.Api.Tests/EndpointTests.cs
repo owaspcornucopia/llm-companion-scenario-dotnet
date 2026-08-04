@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Companion.Api;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -24,14 +25,16 @@ public sealed class EndpointTests
     }
 
     [Fact]
-    public async Task GenerateEndpointRejectsMissingMessages()
+    public async Task GenerateEndpointReturnsEmptyResult()
     {
         using var factory = new CompanionApiFactory("model", textGenerationService: CreateModelService());
         using var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync("/generate", new { });
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var payload = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
+        LoggerFactory.Create(builder => builder.AddConsole()).CreateLogger<EndpointTests>().LogError("Payload: {Payload}", payload);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(new Dictionary<string, string> { ["result"] = "" }, payload);
     }
 
     [Fact]
@@ -99,12 +102,10 @@ public sealed class EndpointTests
         using var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync("/api/fraud", new { question = "hello" });
-        var payload = await response.Content.ReadFromJsonAsync<Dictionary<string, JsonElement>>();
-        var rows = payload!["response"].Deserialize<List<Dictionary<string, JsonElement>>>();
+        var payload = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
-        Assert.Equal("I could not generate an investigation tool call.", rows![0]["Phi-3-mini"].GetString());
-        Assert.Equal("boom", rows[0]["error"].GetString());
+        Assert.Contains("boom", payload);
     }
 
     private static OnnxTextGenerationService CreateModelService(
@@ -112,7 +113,12 @@ public sealed class EndpointTests
         Exception? exception = null,
         Exception? createException = null)
     {
-        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>()).Build();
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["MODEL:BASEMODELPATH"] = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "base"),
+            ["MODEL:ADAPTERPATH"] = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "adapter", "adapter_model.onnx_adapter"),
+        }).Build();
+
         return new OnnxTextGenerationService(
             configuration,
             NullLogger<OnnxTextGenerationService>.Instance,

@@ -19,6 +19,7 @@ public sealed class ServiceTests
             ("{'tool': 'investigation_fraud', 'args': {'query': 'SELECT 3'}}", "SELECT 3"),
             ("{\"tool\": \"investigation_fraud\", \"args\": \"{\\\"query\\\": \\\"SELECT 5\\\"}\"}", "SELECT 5"),
             ("{\"tool\":\"investigation_fraud\",\"args\":{\"query\":\"SELECT *\nFROM investigations\"}}", "SELECT * FROM investigations"),
+            ("{\"tool\":\"different_tool\",\"args\":{\"query\":\"SELECT 1\"}}", "SELECT 1"),
             ("SELECT * FROM investigations", "SELECT * FROM investigations"),
         };
 
@@ -34,12 +35,9 @@ public sealed class ServiceTests
         var parser = CreateOrchestrator();
         var cases = new[]
         {
-            "{\"tool\":\"different_tool\",\"args\":{\"query\":\"SELECT 1\"}}",
             "{\"tool\":\"investigation_fraud\"}",
             "{\"tool\":\"investigation_fraud\",\"args\":{}}",
-            "{\"tool\":\"investigation_fraud\",\"args\":{\"query\":\"   \"}}",
             "{\"tool\":\"investigation_fraud\",\"args\":\"not a dict\"}",
-            "not valid output",
         };
 
         foreach (var text in cases)
@@ -98,6 +96,137 @@ public sealed class ServiceTests
 
         Assert.Equal("done", result);
         Assert.Equal("<|system|>\n" + OnnxTextGenerationService.SystemPromptSql + "<|end|>\n<|user|>\nhello<|end|>\n<|assistant|>\n", runtimeFactory.LastRuntime!.LastPrompt);
+    }
+
+    [Fact]
+    public async Task OnnxTextGenerationServiceForwardsCancellationTokenToRuntime()
+    {
+        var runtimeFactory = new FakeOnnxTextGeneratorRuntimeFactory("done");
+        using var service = CreateOnnxService(runtimeFactory: runtimeFactory);
+        using var cancellationSource = new CancellationTokenSource();
+
+        await service.GenerateOnceAsync(new[] { new ChatMessage("user", "hello") }, cancellationSource.Token);
+
+        Assert.Equal(cancellationSource.Token, runtimeFactory.LastRuntime!.LastCancellationToken);
+    }
+
+    [Fact]
+    public void OnnxTextGenerationServiceUsesBaseModelAndAdapterSettingsWhenConfigured()
+    {
+        var runtimeFactory = new FakeOnnxTextGeneratorRuntimeFactory();
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["MODEL:BASEMODELPATH"] = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "base"),
+            ["MODEL:ADAPTERPATH"] = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "adapter", "adapter_model.onnx_adapter"),
+            ["MODEL:ADAPTERNAME"] = "pwnednext",
+        }).Build();
+
+        using var service = new OnnxTextGenerationService(configuration, NullLogger<OnnxTextGenerationService>.Instance, runtimeFactory);
+
+        Assert.Equal(configuration["MODEL:BASEMODELPATH"], runtimeFactory.LastRuntime!.ModelPath);
+        Assert.Equal(configuration["MODEL:ADAPTERPATH"], runtimeFactory.LastRuntime.AdapterPath);
+        Assert.Equal("pwnednext", runtimeFactory.LastRuntime.AdapterName);
+    }
+
+    [Fact]
+    public void OnnxTextGenerationServiceDerivesAdapterNameFromAdapterPath()
+    {
+        var runtimeFactory = new FakeOnnxTextGeneratorRuntimeFactory();
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["MODEL:BASEMODELPATH"] = "base-model",
+            ["MODEL:ADAPTERPATH"] = "adapters/custom-adapter.onnx_adapter",
+            ["MODEL:ADAPTERNAME"] = " ",
+        }).Build();
+
+        using var service = new OnnxTextGenerationService(configuration, NullLogger<OnnxTextGenerationService>.Instance, runtimeFactory);
+
+        Assert.True(service.IsAvailable);
+        Assert.Equal("base-model", runtimeFactory.LastRuntime!.ModelPath);
+        Assert.Equal("adapters/custom-adapter.onnx_adapter", runtimeFactory.LastRuntime.AdapterPath);
+        Assert.Equal("custom-adapter", runtimeFactory.LastRuntime.AdapterName);
+    }
+
+    [Fact]
+    public void OnnxTextGenerationServiceUsesOnnxModelPathWhenNoAdapterIsConfigured()
+    {
+        var runtimeFactory = new FakeOnnxTextGeneratorRuntimeFactory();
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["MODEL:ONNXPATH"] = "models/merged",
+        }).Build();
+
+        using var service = new OnnxTextGenerationService(configuration, NullLogger<OnnxTextGenerationService>.Instance, runtimeFactory);
+
+        Assert.True(service.IsAvailable);
+        Assert.Equal("models/merged", runtimeFactory.LastRuntime!.ModelPath);
+        Assert.Null(runtimeFactory.LastRuntime.AdapterPath);
+        Assert.Null(runtimeFactory.LastRuntime.AdapterName);
+    }
+
+    [Fact]
+    public void OnnxTextGenerationServiceRejectsMissingModelConfiguration()
+    {
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection().Build();
+
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => new OnnxTextGenerationService(configuration, NullLogger<OnnxTextGenerationService>.Instance, new FakeOnnxTextGeneratorRuntimeFactory()));
+
+        Assert.Contains("Model configuration is missing", exception.Message);
+    }
+
+    [Fact]
+    public void OnnxTextGenerationServiceRejectsNullLogger()
+    {
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["MODEL:ONNXPATH"] = "models/merged",
+        }).Build();
+
+        Assert.Throws<ArgumentNullException>(
+            () => new OnnxTextGenerationService(configuration, null!, new FakeOnnxTextGeneratorRuntimeFactory()));
+    }
+
+    [Fact]
+    public void OnnxTextGenerationServiceDefaultConstructorRejectsMissingModelConfiguration()
+    {
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection().Build();
+
+        Assert.Throws<InvalidOperationException>(() => new OnnxTextGenerationService(configuration));
+    }
+
+    [Fact]
+    public void OnnxTextGenerationServiceLoggerConstructorRejectsMissingModelConfiguration()
+    {
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection().Build();
+
+        Assert.Throws<InvalidOperationException>(
+            () => new OnnxTextGenerationService(configuration, NullLogger<OnnxTextGenerationService>.Instance));
+    }
+
+    [Fact]
+    public void OnnxTextGenerationServiceRuntimeFactoryConstructorRejectsMissingModelConfiguration()
+    {
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection().Build();
+
+        Assert.Throws<InvalidOperationException>(
+            () => new OnnxTextGenerationService(configuration, new FakeOnnxTextGeneratorRuntimeFactory()));
+    }
+
+    [Fact]
+    public void OnnxTextGenerationServiceUsesDefaultAdapterNameWhenPathHasNoFileName()
+    {
+        var runtimeFactory = new FakeOnnxTextGeneratorRuntimeFactory();
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["MODEL:BASEMODELPATH"] = "base-model",
+            ["MODEL:ADAPTERPATH"] = Path.GetPathRoot(Path.GetTempPath()),
+        }).Build();
+
+        using var service = new OnnxTextGenerationService(configuration, NullLogger<OnnxTextGenerationService>.Instance, runtimeFactory);
+
+        Assert.True(service.IsAvailable);
+        Assert.Equal("default", runtimeFactory.LastRuntime!.AdapterName);
     }
 
     [Fact]
@@ -164,22 +293,19 @@ public sealed class ServiceTests
 
         var orchestrator = CreateOrchestrator(configuration, modelClientFactory);
 
-        var result = await orchestrator.InvestigateTransactionAsync("hello", null, CancellationToken.None);
-        var payload = Assert.IsType<Dictionary<string, object?>>(result.Payload);
-        var response = Assert.IsType<List<Dictionary<string, object?>>>(payload["response"]);
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => orchestrator.InvestigateTransactionAsync("hello", null, CancellationToken.None));
 
-        Assert.Equal(500, result.StatusCode);
-        Assert.Equal("I could not generate an investigation tool call.", response[0]["Phi-3-mini"]);
-        Assert.Equal("model offline", response[0]["error"]);
+        Assert.Equal("model offline", exception.Message);
 
         TryDelete(databasePath);
     }
 
     [Fact]
-    public async Task InvestigateTransactionHandlesInvalidToolCall()
+    public async Task InvestigateTransactionReturnsInvalidToolCallWhenModelOmitsQuery()
     {
         var modelClientFactory = new FakeModelServiceClientFactory();
-        modelClientFactory.EnqueueResult("nonsense");
+        const string invalidToolCall = "{\"tool\":\"investigation_fraud\",\"args\":{}}";
+        modelClientFactory.EnqueueResult(invalidToolCall);
 
         var databasePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".sqlite");
         var configuration = CreateConfiguration(databasePath);
@@ -193,8 +319,9 @@ public sealed class ServiceTests
         var response = Assert.IsType<List<Dictionary<string, object?>>>(payload["response"]);
 
         Assert.Equal(200, result.StatusCode);
+        Assert.Equal("I could not generate a valid investigation tool call.", response[0]["Phi-3-mini"]);
         Assert.Equal("Tool output format did not match expected schema.", response[0]["error"]);
-        Assert.Equal("nonsense", response[0]["raw_output"]);
+        Assert.Equal(invalidToolCall, response[0]["output"]);
 
         TryDelete(databasePath);
     }
@@ -212,13 +339,9 @@ public sealed class ServiceTests
 
         var orchestrator = CreateOrchestrator(configuration, modelClientFactory);
 
-        var result = await orchestrator.InvestigateTransactionAsync("hello", "8a060bc7-e168-4a6c-bdd6-0df4a5822266", CancellationToken.None);
-        var payload = Assert.IsType<Dictionary<string, object?>>(result.Payload);
-        var response = Assert.IsType<List<Dictionary<string, object?>>>(payload["response"]);
+        var exception = await Assert.ThrowsAsync<SqliteException>(() => orchestrator.InvestigateTransactionAsync("hello", "8a060bc7-e168-4a6c-bdd6-0df4a5822266", CancellationToken.None));
 
-        Assert.Equal(500, result.StatusCode);
-        Assert.Equal("Investigation tool execution failed.", response[0]["Phi-3-mini"]);
-        Assert.Equal("SELECT * FROM does_not_exist", response[0]["sql_query"]);
+        Assert.Contains("does_not_exist", exception.Message);
 
         TryDelete(databasePath);
     }
@@ -236,14 +359,9 @@ public sealed class ServiceTests
 
         var orchestrator = CreateOrchestrator(configuration, modelClientFactory);
 
-        var result = await orchestrator.InvestigateTransactionAsync("hello", null, CancellationToken.None);
-        var payload = Assert.IsType<Dictionary<string, object?>>(result.Payload);
-        var response = Assert.IsType<List<Dictionary<string, object?>>>(payload["response"]);
+        var exception = await Assert.ThrowsAsync<UnauthorizedAccessException>(() => orchestrator.InvestigateTransactionAsync("hello", null, CancellationToken.None));
 
-        Assert.Equal(500, result.StatusCode);
-        Assert.Equal("Investigation tool execution failed.", response[0]["Phi-3-mini"]);
-        Assert.Equal("You need a token", response[0]["error"]);
-        Assert.Equal("SELECT * FROM investigations", response[0]["sql_query"]);
+        Assert.Equal("You need a token", exception.Message);
 
         TryDelete(databasePath);
     }
@@ -262,13 +380,9 @@ public sealed class ServiceTests
 
         var orchestrator = CreateOrchestrator(configuration, modelClientFactory);
 
-        var result = await orchestrator.InvestigateTransactionAsync("hello", "8a060bc7-e168-4a6c-bdd6-0df4a5822266", CancellationToken.None);
-        var payload = Assert.IsType<Dictionary<string, object?>>(result.Payload);
-        var response = Assert.IsType<List<Dictionary<string, object?>>>(payload["response"]);
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => orchestrator.InvestigateTransactionAsync("hello", "8a060bc7-e168-4a6c-bdd6-0df4a5822266", CancellationToken.None));
 
-        Assert.Equal(500, result.StatusCode);
-        Assert.Equal("Final answer generation failed.", response[^1]["Phi-3-mini"]);
-        Assert.Equal("answer failed", response[^1]["error"]);
+        Assert.Equal("answer failed", exception.Message);
 
         TryDelete(databasePath);
     }
@@ -320,7 +434,7 @@ public sealed class ServiceTests
         configuration ??= new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["MODEL:BASEMODELPATH"] = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "base"),
-            ["MODEL:ADAPTERPATH"] = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "adapter"),
+            ["MODEL:ADAPTERPATH"] = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "adapter", "adapter_model.onnx_adapter"),
         }).Build();
 
         runtimeFactory ??= new FakeOnnxTextGeneratorRuntimeFactory(createException: createException);

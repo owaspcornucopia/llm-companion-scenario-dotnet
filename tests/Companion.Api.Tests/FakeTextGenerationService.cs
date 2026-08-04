@@ -79,13 +79,16 @@ public sealed class FakeOnnxTextGeneratorRuntimeFactory : IOnnxTextGeneratorRunt
     public FakeOnnxTextGeneratorRuntime? LastRuntime { get; private set; }
 
     public IOnnxTextGeneratorRuntime Create(string modelPath)
+        => Create(modelPath, null!, null!);
+
+    public IOnnxTextGeneratorRuntime Create(string modelPath, string adapterPath, string adapterName)
     {
         if (_createException is not null)
         {
             throw _createException;
         }
 
-        LastRuntime = new FakeOnnxTextGeneratorRuntime(_result, _generateException, modelPath);
+        LastRuntime = new FakeOnnxTextGeneratorRuntime(_result, _generateException, modelPath, adapterPath, adapterName);
         return LastRuntime;
     }
 }
@@ -95,22 +98,31 @@ public sealed class FakeOnnxTextGeneratorRuntime : IOnnxTextGeneratorRuntime
     private readonly string _result;
     private readonly Exception? _generateException;
 
-    public FakeOnnxTextGeneratorRuntime(string result, Exception? generateException, string modelPath)
+    public FakeOnnxTextGeneratorRuntime(string result, Exception? generateException, string modelPath, string? adapterPath, string? adapterName)
     {
         _result = result;
         _generateException = generateException;
         ModelPath = modelPath;
+        AdapterPath = adapterPath;
+        AdapterName = adapterName;
     }
 
     public string ModelPath { get; }
 
+    public string? AdapterPath { get; }
+
+    public string? AdapterName { get; }
+
     public string? LastPrompt { get; private set; }
+
+    public CancellationToken LastCancellationToken { get; private set; }
 
     public bool IsDisposed { get; private set; }
 
     public string Generate(IReadOnlyList<ChatMessage> messages, CancellationToken cancellationToken)
     {
         LastPrompt = RenderPrompt(messages);
+        LastCancellationToken = cancellationToken;
         if (_generateException is not null)
         {
             throw _generateException;

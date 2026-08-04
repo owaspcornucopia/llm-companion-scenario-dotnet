@@ -4,3 +4,4 @@ TestResults/
 coverage/
 *.user
 *.suo
+models/

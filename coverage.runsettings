@@ -4,8 +4,7 @@
     <DataCollectors>
       <DataCollector friendlyName="XPlat code coverage">
         <Configuration>
-          <ExcludeByFile>**/obj/**,**/tests/**</ExcludeByFile>
-          <Exclude>[Companion.Api]Companion.Api.OnnxTextGeneratorRuntime,[Companion.Api]Companion.Api.OnnxTextGeneratorRuntimeFactory</Exclude>
+          <ExcludeByFile>**/obj/**,**/tests/**,**/OnnxTextGeneratorRuntime.cs</ExcludeByFile>
         </Configuration>
       </DataCollector>
     </DataCollectors>

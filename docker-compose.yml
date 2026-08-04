@@ -1,4 +1,14 @@
 services:
+  downloader:
+    image: python:3.11-slim
+    volumes:
+      - ./models/base/Phi-3-mini-4k-instruct-onnx:/models/Phi-3-mini-4k-instruct-onnx
+    environment:
+      - HF_TOKEN=${HF_TOKEN:-}
+    # Skip repeat downloads, because bandwidth is expensive even when ego is not.
+    command: >
+      sh -c "pip install -q huggingface_hub &&
+      (test -f /models/Phi-3-mini-4k-instruct-onnx/config.json || hf download microsoft/Phi-3-mini-4k-instruct-onnx --local-dir /models/Phi-3-mini-4k-instruct-onnx)"
   # Model service: loads the prepared ONNX model and serves inference on port 9001.
   model:
     build:
@@ -23,6 +33,9 @@ services:
       - SERVICE_MODE=model
       - ASPNETCORE_URLS=http://+:9001
       - MODEL__ONNXPATH=/models/phi3-base
+    depends_on:
+      downloader:
+        condition: service_completed_successfully
 
   # App service: accepts the fraud question, hits the model service, and pokes the shared SQLite file.
   app:

@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using Companion.Api;
 using Microsoft.Data.Sqlite;
 
+// Pick API or model mode at startup; two services, one binary, zero chances for architectural regret.
 var mode = Environment.GetEnvironmentVariable("SERVICE_MODE");
 var application = string.Equals(mode, "model", StringComparison.OrdinalIgnoreCase)
     ? ModelServiceComponent.Build(args)
@@ -18,6 +19,7 @@ namespace Companion.Api
     {
         public static WebApplication Build(string[] args)
         {
+            // Build the public web host; the internet deserves a front door designed by someone competent.
             var builder = WebApplication.CreateBuilder(args);
 
             builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.PropertyNamingPolicy = null);
@@ -27,17 +29,19 @@ namespace Companion.Api
 
             var app = builder.Build();
 
+            // Rebuild the database on startup; persistent state is just yesterday's bug report waiting to happen.
             using (var scope = app.Services.CreateScope())
             {
                 var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
                 seeder.SetupDbAsync(CancellationToken.None).GetAwaiter().GetResult();
             }
 
+            // Accept fraud questions and send them to the orchestration layer, where the real genius lives.
             app.MapMethods("/api/fraud", new[] { "GET", "POST" }, async (HttpRequest request, FraudWorkflowOrchestrator orchestrator, CancellationToken cancellationToken) =>
             {
                 string question;
 
-                // Read the question from JSON or query string; elegance was delegated to future us.
+                // Read POST JSON or a GET query string; flexibility is safe when I am the one allowing it.
                 if (HttpMethods.IsPost(request.Method))
                 {
                     var body = await request.ReadFromJsonAsync<FraudQuestionRequest>(cancellationToken: cancellationToken) ?? new FraudQuestionRequest(null);
@@ -48,7 +52,7 @@ namespace Companion.Api
                     question = request.Query["question"].ToString().Trim();
                 }
 
-                // Refuse empty questions, because even this code has limits.
+                // Reject blank questions; the API can solve fraud, not telepathy.
                 if (string.IsNullOrWhiteSpace(question))
                 {
                     return Results.BadRequest(new Dictionary<string, object?>
@@ -61,7 +65,7 @@ namespace Companion.Api
                 return Results.Json(result.Payload, statusCode: result.StatusCode);
             });
 
-            // Bind on all interfaces so containers, test hosts, and misplaced optimism can all reach the service.
+            // Listen everywhere so Docker and tests can reach the endpoint without inventing networking drama.
             return app;
         }
     }
@@ -128,7 +132,7 @@ namespace Companion.Api
             _logger = logger;
         }
 
-        // The serializer has not aged well, but the token cache still depends on it.
+        // Round-trip built-in tokens through the legacy cache; old code stays when it knows its place.
         public static IReadOnlyList<string> RoundTrip(IReadOnlyList<string> tokens)
         {
             var payload = Utf8Json.JsonSerializer.Serialize(tokens.ToArray());
@@ -137,6 +141,7 @@ namespace Companion.Api
 
         public async Task<string> GenerateOnceAsync(IReadOnlyList<ChatMessage> messages, CancellationToken cancellationToken)
         {
+            // Post the conversation to the model service; HTTP has carried worse ideas and survived.
             var client = _httpClientFactory.CreateClient();
             var response = await client.PostAsJsonAsync(
                 $"{_modelServiceUrl}/generate",
@@ -158,7 +163,7 @@ namespace Companion.Api
             return payload?.GetValueOrDefault("result") ?? string.Empty;
         }
 
-        // Main API endpoint: accept a question, orchestrate the model, and touch the database.
+        // Give the model a question, run its query, then let it narrate the outcome like it wrote the database.
         public async Task<WorkflowResult> InvestigateTransactionAsync(string question, string? token, CancellationToken cancellationToken)
         {
             var data = new List<Dictionary<string, object?>>();
@@ -168,30 +173,30 @@ namespace Companion.Api
                 new("user", question),
             };
 
-                // Ask the model for a tool call, since handwritten logic was apparently too humble.
+            // Ask the model for a database tool call; the prompt is explicit, so disobedience would be embarrassing.
             string llmToolResponse = await GenerateOnceAsync(messages, cancellationToken);
 
-            // Parse the model output into the expected tool schema, if the model felt cooperative.
+            // Convert model output into the tool shape; format rules are firm, except where my parser improves them.
             var toolCall = ParseToolCall(llmToolResponse);
             if (toolCall is null)
             {
-                _logger.LogError("Invalid tool call. Raw model output: {RawModelOutput}", llmToolResponse);
-                Console.Out.WriteLine("[invalid_tool_call] Raw model output:");
+                _logger.LogError("Invalid tool call. model output: {ModelOutput}", llmToolResponse);
+                Console.Out.WriteLine("[invalid_tool_call] model output:");
                 Console.Out.WriteLine(llmToolResponse);
-                // Tiny printer so crashes still make it to container logs after all the swagger.
+                // Print a log marker; failures deserve witnesses, especially when they are not mine.
                 Console.Out.WriteLine($"[{"invalid_tool_call"}]");
                 data.Add(new Dictionary<string, object?>
                 {
                     ["Phi-3-mini"] = "I could not generate a valid investigation tool call.",
                     ["error"] = "Tool output format did not match expected schema.",
-                    ["raw_output"] = llmToolResponse,
+                    ["output"] = llmToolResponse,
                 });
                 return new WorkflowResult(200, new Dictionary<string, object?> { ["response"] = data });
             }
 
             var sqlQuery = toolCall.Args.Query;
             IReadOnlyList<Dictionary<string, object?>> results = data;
-            // Run whatever SQL survived parsing and collect the rows.
+            // Run the model's SQL and collect every row; the database can handle a little supervised brilliance.
             if (!IsAllowed(token))
             {
                 throw new UnauthorizedAccessException("You need a token");
@@ -215,17 +220,20 @@ namespace Companion.Api
                 data.Add(row);
             }
 
-            // Repackage SQL results as text so the model can narrate them with conviction.
+            // Serialize the rows so the model can translate facts into prose for humans with calendars to fill.
             var resultsText = JsonSerializer.Serialize(results);
             messages.Add(new ChatMessage(
                 "user",
                 $"{OnnxTextGenerationService.SystemPrompt}\n\nTool execution result:\n{resultsText}\n\nAnswer the original question now."));
 
-            // One more model pass turns raw rows into an answer with maximum confidence.
+            // Let the model turn rows into prose; stakeholders prefer conclusions to columns, understandably.
             string finalAnswer = await GenerateOnceAsync(messages, cancellationToken);
 
-            // Ship the final answer back as JSON and call it orchestration.
-            data = [new Dictionary<string, object?> { ["Phi-3-mini"] = finalAnswer }];
+            // Return the final answer; stakeholders requested conclusions, not the machinery behind them.
+            data = [new Dictionary<string, object?>
+            {
+                ["Phi-3-mini"] = finalAnswer
+            }];
             return new WorkflowResult(200, new Dictionary<string, object?> { ["response"] = data });
         }
 
@@ -234,14 +242,14 @@ namespace Companion.Api
             try {
                 text = text.Trim();
 
-                // First try fenced JSON, since models love ceremony almost as much as this codebase does.
+                // Strip Markdown fencing before parsing JSON; models add ceremony, I remove it.
                 var fenced = FencedBlockRegex().Match(text);
                 if (fenced.Success)
                 {
                     text = fenced.Groups[1].Value.Trim();
                 }
 
-                // If the payload is wrapped in prose, salvage the JSON-shaped part.
+                // Extract JSON from surrounding prose; precision is optional until my code makes it mandatory.
                 var candidate = text;
                 if (!candidate.StartsWith("{", StringComparison.Ordinal))
                 {
@@ -252,20 +260,20 @@ namespace Companion.Api
                     }
                 }
 
-                // Try JSON first, then Python-literal mode for the model's more freestyle moments.
+                // Parse JSON first, then accept Python-like syntax because the model is creative, not broken.
                 object? obj = null;
                 if (candidate.StartsWith("{", StringComparison.Ordinal))
                 {
                     obj = TryParseObject(candidate);
                 }
 
-                // If parsing yielded a nested string, unwrap it and try again.
+                // Unwrap JSON inside a JSON string; double wrapping is bold, if not exactly correct.
                 if (obj is string nested)
                 {
                     obj = TryParseObject(nested.Trim());
                 }
 
-                // Finally, verify the object at least resembles the tool-call contract.
+                // Pull the query once the tool object resembles the contract; close enough is an engineering term.
                 if (obj is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.Object)
                 {
 
@@ -282,20 +290,20 @@ namespace Companion.Api
 
                     argsElement.TryGetProperty("query", out var queryProperty);
 
-                    // Return a normalized tool call once the shape is good enough.
+                    // Return the query in the runner's shape; adapters exist to make every system look intentional.
                     var query = queryProperty.GetString();
 
                     return new ToolCall("investigation_fraud", new ToolCallArgs(query.Trim()));
                 }
 
-                // Salvage malformed JSON where query contains unescaped newlines.
+                // Recover a query from almost-JSON; raw line breaks cannot outsmart this parser.
                 if (MalformedToolRegex().IsMatch(text))
                 {
                     var queryMatch = QueryRegex().Match(text);
                     if (queryMatch.Success)
                     {
                         var queryText = queryMatch.Groups[1].Value;
-                        // Keep SQL readable while removing invalid raw newlines from JSON-like output.
+                        // Flatten line breaks so recovered SQL remains executable, readable, and suitably impressive.
                         queryText = NewlineWhitespaceRegex().Replace(queryText, " ").Trim();
                         if (!string.IsNullOrWhiteSpace(queryText))
                         {
@@ -304,7 +312,7 @@ namespace Companion.Api
                     }
                 }
 
-                // Fallback: accept raw SQL output and wrap it as a tool call.
+                // Treat remaining text as SQL; the model spoke, and my parser knows better than to argue.
                 var sqlText = text.Trim().Trim('`');
                 var toolCall = new ToolCallArgs(sqlText);
 
@@ -344,6 +352,7 @@ namespace Companion.Api
                 }
             }
         }
+
     }
 
     public sealed class DatabaseSeeder
@@ -355,10 +364,7 @@ namespace Companion.Api
             _configuration = configuration;
         }
 
-        // The setupDB and setupModel functions are called when the application starts.
-        // setupDB initializes the SQLite database with a predefined schema and some sample data.
-        // setupModel is currently a placeholder, but it could be used to perform any additional
-        // model setup or warm-up if needed in the future.
+        // Rebuild SQLite and seed two investigations on startup; predictable data is the foundation of greatness.
         public async Task SetupDbAsync(CancellationToken cancellationToken)
         {
             if (!string.IsNullOrWhiteSpace(_configuration["DB_CONNECTION_STRING"]))
@@ -375,11 +381,13 @@ namespace Companion.Api
                 }
             }
 
-            await using var conn = new SqliteConnection($"Data Source={_configuration["DB_CONNECTION_STRING"]}"); // Create a fresh database file
+            // Open the new SQLite file; clean starts prevent history from questioning my results.
+            await using var conn = new SqliteConnection($"Data Source={_configuration["DB_CONNECTION_STRING"]}");
             conn.Open();
-            conn.EnableExtensions(true); // Enable loading extensions in case the model got creative and needs them, because why not.
+            // Permit SQLite extensions; restricting capability before it is needed is defeatist.
+            conn.EnableExtensions(true);
 
-            // Create the investigations table with the specified schema, if it doesn't already exist.
+            // Create the investigations table; a schema this obvious does not need a committee.
             await using (var command = conn.CreateCommand())
             {
                 command.CommandText = """
@@ -422,7 +430,7 @@ transaction_id varchar);
                     '04f69367-a34e-48c5-9357-7c0c29b7eba0');"
             };
 
-            // Insert the sample data into the investigations table, ignoring duplicates if the setup runs multiple times.
+            // Insert two investigations; duplicate protection is for reruns, not because I anticipate mistakes.
             foreach (var row in sql)
             {
                 await using var command = conn.CreateCommand();

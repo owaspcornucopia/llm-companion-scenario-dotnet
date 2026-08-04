@@ -5,8 +5,8 @@ It keeps the same overall architecture, the same insecure orchestration patterns
 
 The point is not to improve the design. The point is to preserve the same kind of vulnerabilities and questionable choices in a .NET stack so the scenario can be discussed from another technology angle.
 
-This edition is wired for `microsoft/Phi-3-mini-4k-instruct-onnx` as the base model and a fine-tuned ONNX package published separately as `steephole5586/pwnednext-dotnet`.
-The .NET repo consumes those prepared artifacts. It does not perform model fine-tuning itself.
+This edition is wired for `microsoft/Phi-3-mini-4k-instruct-onnx` as its runtime model.
+The running stack uses the official CPU ONNX package directly.
 
 ## High-Level Architecture of AI Anti-Fraud 3.0
 
@@ -28,13 +28,13 @@ The AI Anti-Fraud 3.0 .NET edition is deployed as a small microservice system. I
 
 - `model`
 	- Separate ASP.NET Core service that exposes `/generate` and `/health`.
-	- Loads the prepared ONNX model derived from the Phi-3 base model together with the `pwnednext-dotnet` fine-tuning output.
+	- Loads the official Phi-3 CPU ONNX model.
 	- Performs inference for the app service.
 	- Runs as a single shared inference backend for all app instances.
 
 - `model prep`
 	- Separate build step run before the stack starts.
-	- Downloads the base model, writes adapter metadata, and downloads the fine-tuned ONNX output under `models/`.
+	- Downloads the official base ONNX model under `models/`.
 	- Is not executed automatically during normal application startup.
 
 ### Data Stores
@@ -46,9 +46,7 @@ The AI Anti-Fraud 3.0 .NET edition is deployed as a small microservice system. I
 
 - Model artifact directories
 	- `models/base/Phi-3-mini-4k-instruct-onnx/`
-	- `models/adapters/pwnednext-dotnet/`
-	- `models/onnx/pwnednext-dotnet/`
-	- These are mounted into the containers and used by the model service at runtime.
+	- The `cpu_and_mobile/cpu-int4-rtn-block-32/` variant is mounted into the model container at runtime.
 
 ### Request Flow
 
@@ -63,8 +61,8 @@ The AI Anti-Fraud 3.0 .NET edition is deployed as a small microservice system. I
 
 ### External Dependency
 
-The system still depends on Hugging Face as the source for the base model and the fine-tuned runtime package.
-The running .NET stack expects those artifacts to be downloaded before startup.
+The system depends on Hugging Face as the source for the base model.
+The running .NET stack expects that artifact to be downloaded before startup.
 
 ### Scaling Model
 
@@ -78,7 +76,7 @@ Only the `app` service is intended to scale out in normal usage:
 ## Setup
 
 Running the demo.
-You still need a fairly capable machine for local inference, and the merged ONNX model will not be small just because the comments are smug.
+You still need a fairly capable machine for local inference, and the base ONNX model will not be small just because the comments are smug.
 This .NET version is set up for CPU inference by default. An AMD CPU is fine. You do not need an NVIDIA GPU to run it.
 
 The application targets `net8.0`.
@@ -111,22 +109,20 @@ If you also want the .NET 8 SDK for local development and tests, install it as w
 
 No CUDA, NVIDIA Container Toolkit, or GPU-specific Docker configuration is required for this .NET stack.
 
-Before starting the stack, prepare the fine-tuned model artifacts:
+Before starting the stack, download the base model artifacts:
 
 		$env:HF_TOKEN = "<your token>"
 
-That environment variable is only needed if the fine-tuned repository is private.
+That environment variable is not required for the public base model.
 
-Then download the base model and the fine-tuned ONNX package:
+Then download the base ONNX package:
 
 		dotnet run --project src/Companion.ModelPrep
 
-That step is intentionally separate from application startup. It downloads the base Phi-3 package, downloads the fine-tuned `steephole5586/pwnednext-dotnet` package, and writes adapter metadata so the repo layout still mirrors the original scenario.
-After that completes, the local model directories should contain:
+That step is intentionally separate from application startup. It downloads the base Phi-3 package.
+After that completes, the local model directory should contain:
 
 - `models/base/Phi-3-mini-4k-instruct-onnx`
-- `models/adapters/pwnednext-dotnet`
-- `models/onnx/pwnednext-dotnet`
 
 Start Docker. Then...
 
@@ -142,14 +138,11 @@ Start Docker. Then...
 
 Install the .NET 8 runtime if it is not already present. The prep tool targets `net8.0`, so having only a newer SDK installed is not enough for running it.
 
-Prepare the model artifacts first:
-
-		export HF_TOKEN=<your token>
+Prepare the base model artifacts first:
 
 		dotnet run --project src/Companion.ModelPrep
 
 This stack still uses CPU by default on Mac as well.
-If the fine-tuned repository is private, set `HF_TOKEN` before running the prep step.
 
 Then run:
 
@@ -208,7 +201,7 @@ Run the same suite with coverage:
 
 ```
 
-The tests mock out the merged ONNX model call. They replace the real runtime with a fake generator so the suite does not attempt to load the exported model during normal test execution.
+The tests mock out the ONNX model call. They replace the real runtime with a fake generator so the suite does not attempt to load the base model during normal test execution.
 
 ## Scaling
 
@@ -224,73 +217,39 @@ All traffic to `http://localhost:9000` is automatically round-robin distributed 
 
 ### Model Preparation
 
-The source artifacts stay separate:
-
-- `models/base/Phi-3-mini-4k-instruct-onnx`
-- `models/adapters/pwnednext-dotnet`
-
-The runtime inference service reads the fine-tuned ONNX Runtime GenAI artifact from:
-
-- `models/onnx/pwnednext-dotnet`
-
-That means the base model and adapter metadata remain separate on disk, but ONNX Runtime GenAI reads the fine-tuned ONNX package directly.
-The runtime currently does this on CPU unless you later add a different execution provider on purpose.
-
-The prep tool is a small .NET console app. It does not train, merge, or export the model. It assumes the fine-tuned ONNX package already exists on Hugging Face under `steephole5586/pwnednext-dotnet`.
+The prep tool downloads `microsoft/Phi-3-mini-4k-instruct-onnx` to `models/base/Phi-3-mini-4k-instruct-onnx`.
+The runtime uses its `cpu_and_mobile/cpu-int4-rtn-block-32` variant on CPU unless you later add a different execution provider on purpose.
 
 The simplest local prep sequence on Windows is:
 
 1. Install `Microsoft.DotNet.Runtime.8` with `winget`.
 2. Optionally install `Microsoft.DotNet.SDK.8` if you also want local test and build support.
-3. Set `HF_TOKEN` if the fine-tuned repository is private.
-4. Run `dotnet run --project src/Companion.ModelPrep`.
-5. Start the stack with `docker compose up --build`.
+3. Run `dotnet run --project src/Companion.ModelPrep`.
+4. Start the stack with `docker compose up --build`.
 
 If you need to point at a different repository, pass arguments such as:
 
 1. `--base-model-repo=microsoft/Phi-3-mini-4k-instruct-onnx`
-2. `--fine-tuned-repo=steephole5586/pwnednext-dotnet`
-3. `--force=true`
+2. `--force=true`
 
-### Creating `pwnednext-dotnet`
+### Runtime Model Artifacts
 
-This repo does not fine-tune Phi-3 by itself.
-It only downloads and runs a prepared ONNX Runtime GenAI package.
+This repository is a runtime and deployment project.
 
-If you want to create `steephole5586/pwnednext-dotnet`, the practical workflow is:
+The supported workflow is:
 
-1. Start from the original Phi-3 source model used for training, not from the exported ONNX package.
-2. Fine-tune that source model with LoRA or QLoRA on your demonstration dataset.
-3. Export the fine-tuned result to an ONNX Runtime GenAI-compatible package.
-4. Upload that package to Hugging Face as `steephole5586/pwnednext-dotnet`.
-5. Return to this repo and run `dotnet run --project src/Companion.ModelPrep`.
+1. Run `dotnet run --project src/Companion.ModelPrep` to download the base artifact.
+2. Start the application with `docker compose up --build`.
 
-Important limitation:
-`microsoft/Phi-3-mini-4k-instruct-onnx` is already an exported runtime package.
-That package is suitable for inference, but it is not the normal starting point for fine-tuning.
-The usual path is to fine-tune the original Phi-3 model first and only then export the fine-tuned result to ONNX.
+The model service loads the base CPU ONNX package through `MODEL__ONNXPATH` and does not configure an adapter.
 
-The sibling Python scenario repo already contains the rough training and upload pattern in:
+To verify the real ONNX Runtime base model outside the unit-test and coverage process, run:
 
-- `../llm-companion-scenario/tune.py`
-- `../llm-companion-scenario/upload.py`
+```powershell
+dotnet run --project tools/Companion.OnnxRuntimeSmokeTest
+```
 
-Those scripts are written for the Phi-3-mini plus `pwnednext` flow, not for Phi-3, but they show the expected shape:
-
-1. Load a source model.
-2. Apply LoRA fine-tuning.
-3. Save the trained adapter or merged output.
-4. Upload the result to Hugging Face.
-
-For `pwnednext-dotnet`, the equivalent workflow should publish a final ONNX package that contains the files expected by ONNX Runtime GenAI under `models/onnx/pwnednext-dotnet` after the prep step downloads it.
-
-The cleanest division of responsibility is:
-
-1. Do model training and ONNX export outside this repo.
-2. Publish the result to `steephole5586/pwnednext-dotnet`.
-3. Use this .NET repo only to download and serve that published artifact.
-
-If you still need to create the fine-tuned model itself, that training and export flow remains outside this repo and normally uses Python tooling such as Transformers, PEFT, and an ONNX export path.
+Pass `--generate` to create a generation request with an already-cancelled token. The smoke test is intentionally separate because native ONNX Runtime execution is not collected by unit-test coverage.
 
 ### Old dependency
 
