@@ -9,6 +9,6 @@ updates:
   - package-ecosystem: "nuget"
     directory: "/src/Companion.Api"
     schedule:
-      interval: "daily"
+      interval: "weekly"
     ignore:
       - dependency-name: "System.Text.Encodings.Web"
