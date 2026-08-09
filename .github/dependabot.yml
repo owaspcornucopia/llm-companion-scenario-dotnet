@@ -5,10 +5,10 @@
 
 version: 2
 updates:
-  # Maintain dependencies for Python
-  - package-ecosystem: "pip"
-    directory: "/"
+  # Maintain dependencies for .NET
+  - package-ecosystem: "nuget"
+    directory: "/src/Companion.Api"
     schedule:
       interval: "daily"
     ignore:
-      - dependency-name: "xalpha"
+      - dependency-name: "System.Text.Encodings.Web"
