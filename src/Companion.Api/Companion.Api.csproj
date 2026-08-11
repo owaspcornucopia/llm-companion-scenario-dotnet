@@ -4,7 +4,7 @@
     <RootNamespace>Companion.Api</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.7" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" />
     <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI" Version="0.15.2" />
     <!-- # Jimmy's favourite dependency, do not upgrade, for some reason everything breaks -->
     <PackageReference Include="System.Text.Encodings.Web" Version="4.7.1" />
