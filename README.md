@@ -1,16 +1,23 @@
 # PwnedNext - An OWASP Cornucopia LLM Companion Guide App (.NET Edition)
 
-This is a .NET 8 companion version of `llm-companion-scenario`.
-It keeps the same overall architecture, the same insecure orchestration patterns, and the same overconfident tone as the Python version, but swaps the Python inference service for ONNX Runtime GenAI.
+<img src="https://media.githubusercontent.com/media/owaspcornucopia/llm-companion-scenario/refs/heads/main/images/pwnednext.jpg" width="1000">
 
-The point is not to improve the design. The point is to preserve the same kind of vulnerabilities and questionable choices in a .NET stack so the scenario can be discussed from another technology angle.
+A-Corp Ltd just finished coding their brand new multitenanted AI application "AI Anti-Fraud 3.0" to be used by their customers in the Fintech space.
+This has caught the interest of PwnedNext, a European company that sells solutions to a number of banks and financial institutions. They therefore have voiced their interest in buying A-Corp and their new AI system.
 
-This edition is wired for `microsoft/Phi-3-mini-4k-instruct-onnx` as its runtime model.
-The running stack uses the official CPU ONNX package directly.
+But under Article 9 of the AI Act, any AI system classified as "high-risk" mandates the implementation of a comprehensive risk management system throughout the entire lifecycle of the system. In order to identify foreseeable risks, PwnedNext is required to identify and analyse known and reasonably foreseeable AI risks. This includes examining what happens when the system faces adversarial attacks or is misused, forcing a practical threat modelling process. A-Corp must therefore prove that its system is designed and developed to be robust, secure, and adequately protected against unauthorised access, data poisoning, and manipulation.
+
+The current CEO of A-Corp is panicking after becoming aware that they haven't done any threat modelling or risk assessment during the development of AI Anti-Fraud 3.0. Luckily, the CTO has heard about this game called OWASP Cornucopia that can be used to do threat modelling of AI applications quickly in order to satisfy PwnedNext's threat modelling and risk management requirements. He immediately urges all his junior AI developers and testers to come together for an OWASP Cornucopia session.
+
+You are those junior developers.
 
 ## High-Level Architecture of AI Anti-Fraud 3.0
 
-The AI Anti-Fraud 3.0 .NET edition is deployed as a small microservice system. It separates request handling, model inference, and supporting services so the application can be scaled and threat-modeled more easily.
+![Architecture sequence diagram](https://raw.githubusercontent.com/owaspcornucopia/llm-companion-scenario/refs/heads/main/architecture-sequence-diagram.svg)
+
+![Threat model](https://raw.githubusercontent.com/owaspcornucopia/llm-companion-scenario/refs/heads/main/ThreatDragonModels/threatmodel.png)
+
+The AI Anti-Fraud 3.0 .NET edition is deployed as a small microservice system. It separates request handling, model inference, and supporting services so the application can be scaled.
 
 ### AI Anti-Fraud 3.0 Components
 
