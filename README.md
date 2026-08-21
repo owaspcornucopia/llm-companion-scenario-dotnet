@@ -2,10 +2,10 @@
 
 <img src="https://media.githubusercontent.com/media/owaspcornucopia/llm-companion-scenario/refs/heads/main/images/pwnednext.jpg" width="1000">
 
-A-Corp Ltd just finished coding their brand new multitenanted AI application "AI Anti-Fraud 3.0" to be used by their customers in the Fintech space.
-This has caught the interest of PwnedNext, a European company that sells solutions to a number of banks and financial institutions. They therefore have voiced their interest in buying A-Corp and their new AI system.
+A-Corp Ltd just finished coding their brand-new multi-tenant AI application "AI Anti-Fraud 3.0" to be used by their customers in the Fintech space.
+This has caught the interest of PwnedNext, a European company that sells solutions to a number of banks and financial institutions. They have therefore voiced their interest in buying A-Corp and its new AI system.
 
-But under Article 9 of the AI Act, any AI system classified as "high-risk" mandates the implementation of a comprehensive risk management system throughout the entire lifecycle of the system. In order to identify foreseeable risks, PwnedNext is required to identify and analyse known and reasonably foreseeable AI risks. This includes examining what happens when the system faces adversarial attacks or is misused, forcing a practical threat modelling process. A-Corp must therefore prove that its system is designed and developed to be robust, secure, and adequately protected against unauthorised access, data poisoning, and manipulation.
+But under Article 9 of the AI Act, any AI system classified as "high-risk" mandates the implementation of a comprehensive risk management system throughout the entire lifecycle of the system. In order to identify foreseeable risks, PwnedNext is required to identify and analyze known and reasonably foreseeable AI risks. This includes examining what happens when the system faces adversarial attacks or is misused, forcing a practical threat modelling process. A-Corp must therefore prove that its system is designed and developed to be robust, secure, and adequately protected against unauthorized access, data poisoning, and manipulation.
 
 The current CEO of A-Corp is panicking after becoming aware that they haven't done any threat modelling or risk assessment during the development of AI Anti-Fraud 3.0. Luckily, the CTO has heard about this game called OWASP Cornucopia that can be used to do threat modelling of AI applications quickly in order to satisfy PwnedNext's threat modelling and risk management requirements. He immediately urges all his junior AI developers and testers to come together for an OWASP Cornucopia session.
 
