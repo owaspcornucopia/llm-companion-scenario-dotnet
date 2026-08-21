@@ -9,7 +9,7 @@ But under Article 9 of the AI Act, any AI system classified as "high-risk" manda
 
 The current CEO of A-Corp is panicking after becoming aware that they haven't done any threat modelling or risk assessment during the development of AI Anti-Fraud 3.0. Luckily, the CTO has heard about this game called OWASP Cornucopia that can be used to do threat modelling of AI applications quickly in order to satisfy PwnedNext's threat modelling and risk management requirements. He immediately urges all his junior AI developers and testers to come together for an OWASP Cornucopia session.
 
-You are those junior developers.
+You are those junior developers and testers.
 
 ## High-Level Architecture of AI Anti-Fraud 3.0
 
