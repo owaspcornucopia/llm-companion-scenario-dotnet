@@ -258,6 +258,13 @@ dotnet run --project tools/Companion.OnnxRuntimeSmokeTest
 
 Pass `--generate` to create a generation request with an already-cancelled token. The smoke test is intentionally separate because native ONNX Runtime execution is not collected by unit-test coverage.
 
+## Safety boundary
+
+Run this project only with synthetic transactions in an isolated emulator. Do not
+connect it to a real bank, real credentials, or a production model. The
+comments are intentionally blunt and overconfident to help you, who are not
+reading every line of Java, understand why each insecure choice exists.
+
 ## License
 
 This work is a derivative of OWASP Cornucopia, used under the Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0) license.
