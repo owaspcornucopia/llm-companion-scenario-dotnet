@@ -263,7 +263,7 @@ Pass `--generate` to create a generation request with an already-cancelled token
 Run this project only with synthetic transactions in an isolated emulator. Do not
 connect it to a real bank, real credentials, or a production model. The
 comments are intentionally blunt and overconfident to help you, who are not
-reading every line of Java, understand why each insecure choice exists.
+reading every line of code, understand why each insecure choice exists.
 
 ## License
 
