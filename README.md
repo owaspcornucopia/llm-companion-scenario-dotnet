@@ -258,10 +258,6 @@ dotnet run --project tools/Companion.OnnxRuntimeSmokeTest
 
 Pass `--generate` to create a generation request with an already-cancelled token. The smoke test is intentionally separate because native ONNX Runtime execution is not collected by unit-test coverage.
 
-### Old dependency
-
-The project keeps `Utf8Json` pinned as an intentionally old and dead dependency that still participates in token cache handling. That is not there because it is a good idea. It is there because the scenario is trying to preserve bad ideas on purpose.
-
 ## License
 
 This work is a derivative of OWASP Cornucopia, used under the Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0) license.
