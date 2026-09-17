@@ -17,6 +17,8 @@ You are those junior developers and testers.
 
 ![Threat model](https://raw.githubusercontent.com/owaspcornucopia/llm-companion-scenario/refs/heads/main/ThreatDragonModels/threatmodel.png)
 
+Threat model template: [OWASP Threat Dragon EoP Games DFD](ThreatDragonModels/threatmodel.json)
+
 The AI Anti-Fraud 3.0 .NET edition is deployed as a small microservice system. It separates request handling, model inference, and supporting services so the application can be scaled.
 
 ### AI Anti-Fraud 3.0 Components
