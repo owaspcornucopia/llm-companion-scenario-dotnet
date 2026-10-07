@@ -13,9 +13,9 @@ You are those junior developers and testers.
 
 ## High-Level Architecture of AI Anti-Fraud 3.0
 
-![Architecture sequence diagram](https://raw.githubusercontent.com/owaspcornucopia/llm-companion-scenario/refs/heads/main/architecture-sequence-diagram.svg)
+![Architecture sequence diagram](diagrams/sequence-diagram.png)
 
-![Threat model](https://raw.githubusercontent.com/owaspcornucopia/llm-companion-scenario/refs/heads/main/ThreatDragonModels/threatmodel.png)
+![Threat model](/ThreatDragonModels/threatmodel.png)
 
 Threat model template: [OWASP Threat Dragon EoP Games DFD](ThreatDragonModels/threatmodel.json)
 
@@ -30,6 +30,7 @@ The AI Anti-Fraud 3.0 .NET edition is deployed as a small microservice system. I
 
 - `app`
 	- ASP.NET Core API service that exposes `/api/fraud`.
+	- Serves the transaction-review frontend at `http://localhost:9000/`.
 	- Accepts a fraud-investigation question from the user.
 	- Sends chat messages to the model service to obtain a tool call and a final response.
 	- Executes the generated SQL against the SQLite database.
@@ -181,6 +182,22 @@ Example response:
 	]
 }
 ```
+
+## Web frontend
+
+The responsive transaction-review frontend is served by the ASP.NET Core app from
+`src/Companion.Api/wwwroot/`:
+
+- `index.html` - A-Corp transaction review screen
+- `styles.css` - desktop, tablet, and mobile layout styles
+- `app.js` - model health status, investigation submission, result rendering,
+  report download wiring, and the waiting state shown while a new investigation
+  is being processed
+
+Open `http://localhost:9000/` after starting the stack. The page checks the
+app's `/health` proxy, submits questions to `/api/fraud`, and downloads
+successful results from `/report`. Selecting a sample question also starts the
+corresponding investigation automatically.
 
 ## Tests
 

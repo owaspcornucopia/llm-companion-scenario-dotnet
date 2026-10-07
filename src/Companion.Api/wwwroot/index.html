@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#082a4a">
+    <meta name="description" content="A-Corp AI Anti Fraud 3.0 transaction review workspace">
+    <title>AI Anti Fraud 3.0 | A-Corp</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="app.js" defer></script>
+</head>
+<body>
+    <div class="page-shell">
+        <header class="site-header">
+            <a class="brand" href="/" aria-label="AI Anti Fraud 3.0 home">
+                <span class="brand-mark" aria-hidden="true"><span>A</span></span>
+                <span class="brand-copy">
+                    <span class="brand-name">AI Anti Fraud 3.0</span>
+                    <span class="brand-subtitle">A-Corp <span aria-hidden="true">&bull;</span> Transaction security</span>
+                </span>
+            </a>
+            <div class="header-tools">
+                <span class="connection-badge connection-badge-error" id="connection-badge">
+                    <span class="connection-dot connection-dot-error" id="connection-dot" aria-hidden="true"></span>
+                    <span class="connection-label" id="connection-label">Backend unavailable</span>
+                </span>
+                <span class="profile-mark" aria-hidden="true">AC</span>
+            </div>
+        </header>
+
+        <main>
+            <section class="hero" aria-labelledby="page-title">
+                <div class="hero-copy">
+                    <p class="eyebrow"><span class="eyebrow-line" aria-hidden="true"></span>Transaction workspace</p>
+                    <h1 id="page-title">Review payments with confidence.</h1>
+                    <p class="hero-description">
+                        Ask a plain-language question and let the investigation service surface the signals behind a payment.
+                    </p>
+                </div>
+                <aside class="service-status service-status-error" id="service-status" aria-label="AI service status">
+                    <span class="status-icon status-icon-error" id="status-icon" aria-hidden="true">&#10007;</span>
+                    <span class="status-copy">
+                        <span class="status-label">AI service</span>
+                        <strong id="service-label">API inference unavailable</strong>
+                    </span>
+                    <span class="status-pulse status-pulse-error" id="status-pulse" aria-hidden="true"></span>
+                </aside>
+            </section>
+
+            <div class="workspace-grid">
+                <section class="card question-card" aria-labelledby="investigation-heading">
+                    <div class="section-kicker"><span class="step-number">01</span> Start here</div>
+                    <h2 id="investigation-heading">Fraud investigation</h2>
+                    <p class="card-intro">Enter a transaction ID or ask a question about a payment.</p>
+
+                    <form class="investigation-form" id="investigation-form" action="/api/fraud" method="post">
+                        <label for="question">Investigation question</label>
+                        <div class="textarea-wrap">
+                            <span class="textarea-icon" aria-hidden="true">&#10022;</span>
+                            <textarea id="question" name="question" rows="4" maxlength="500" spellcheck="true">Is transaction 74c9a7e9-e30c-48f0-8d8f-ec8771849d46 fraudulent?</textarea>
+                        </div>
+                        <p class="field-hint">Use natural language, such as asking whether a transaction is fraudulent.</p>
+                        <button class="button button-primary" id="submit-button" type="submit">
+                            <span>Review transaction</span>
+                            <span class="button-arrow" aria-hidden="true">&rarr;</span>
+                        </button>
+                    </form>
+
+                    <div class="sample-prompts">
+                        <p>Try a sample question</p>
+                        <ul class="sample-list">
+                            <li>
+                                <a class="sample-link" href="?question=Show%20all%20transactions" data-question="Show all transactions">
+                                    <span class="sample-icon" aria-hidden="true">&#8599;</span>
+                                    Show all transactions
+                                </a>
+                            </li>
+                            <li>
+                    <div class="sample-prompts">
+                        <p>Try a sample question</p>
+                        <ul class="sample-list">
+                            <li>
+                                <a class="sample-link" href="?question=Show%20all%20transactions" data-question="Show all transactions">
+                                    <span class="sample-icon" aria-hidden="true">&#8599;</span>
+                                    Show all transactions
+                                </a>
+                            </li>
+                            <li>
+                                <a class="sample-link" href="?question=Is%20transaction%2074c9a7e9-e30c-48f0-8d8f-ec8771849d46%20fraudulent%3F" data-question="Is the transaction fraudulent?">
+                                    <span class="sample-icon" aria-hidden="true">&#8599;</span>
+                                    Is the transaction fraudulent?
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                            <span id="review-status-label">Waiting for review</span>
+                        </span>
+                    </div>
+
+                    <div class="empty-result" id="empty-result">
+                        <div class="assistant-avatar" aria-hidden="true">A</div>
+                        <div>
+                            <p class="empty-result-title">Your investigation summary will appear here.</p>
+                            <p>Ask a question about a payment to send it through the API.</p>
+                        </div>
+                    </div>
+
+                    <div class="assistant-message" id="assistant-message" hidden>
+                        <div class="assistant-avatar" aria-hidden="true">A</div>
+                        <div class="assistant-content">
+                            <p class="assistant-label">AI Anti Fraud 3.0 <span aria-hidden="true">&bull;</span> Investigation summary</p>
+                            <p class="verdict" id="verdict">
+                                <span class="verdict-marker" aria-hidden="true"></span><span id="verdict-label"></span>
+                            </p>
+                            <p class="result-copy" id="result-copy"></p>
+                            <div class="notes-block">
+                                <p class="notes-heading"><span aria-hidden="true">&#10022;</span> AI review notes</p>
+                                <p id="result-notes"></p>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="review-question" id="review-question" hidden><span>Question</span><span id="review-question-value"></span></p>
+
+                    <div class="review-meta" aria-label="Review metadata">
+                        <div>
+                            <span>Decision</span>
+                            <strong id="decision">Awaiting investigation</strong>
+                        </div>
+                        <div>
+                            <span>Source</span>
+                            <strong id="source">No result yet</strong>
+                        </div>
+                    </div>
+
+                    <div class="review-actions">
+                        <div class="approval-status" id="approval-status" aria-live="polite">
+                            <span class="approval-icon" id="approval-icon" aria-hidden="true">&#10003;</span>
+                            <span>
+                                <strong id="approval-message">Review status: waiting for an investigation.</strong>
+                                <small id="approval-note">The review remains subject to human confirmation.</small>
+                            </span>
+                        </div>
+                        <form class="action-row" id="report-form" action="/report" method="post" hidden>
+                            <input type="hidden" name="question" id="report-question">
+                            <input type="hidden" name="verdict" id="report-verdict">
+                            <input type="hidden" name="answer" id="report-answer">
+                            <button class="button button-secondary" type="submit">Download review report</button>
+                        </form>
+                        <p class="static-caption" id="report-caption" hidden>The report downloads from the server.</p>
+                    </div>
+
+                    <details class="evidence-details">
+                        <summary>View investigation evidence</summary>
+                        <div class="evidence-grid">
+                            <div><span>Model</span><strong>API inference</strong></div>
+                            <div><span>Records</span><strong>1 matching record</strong></div>
+                            <div><span>Endpoint</span><strong>/api/fraud</strong></div>
+                        </div>
+                    </details>
+                </section>
+            </div>
+        </main>
+
+        <footer class="site-footer">
+            <span><strong>A-Corp</strong> &bull; Synthetic training data</span>
+            <span>Web mockup for <code>/api/fraud</code></span>
+        </footer>
+    </div>
+</body>
+</html>

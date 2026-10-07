@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text;
 using System.Text.RegularExpressions;
 using Companion.Api;
 using Microsoft.Data.Sqlite;
@@ -36,6 +37,63 @@ namespace Companion.Api
                 seeder.SetupDbAsync(CancellationToken.None).GetAwaiter().GetResult();
             }
 
+            app.UseDefaultFiles();
+            app.UseStaticFiles();
+
+            app.MapGet("/", (IWebHostEnvironment environment) =>
+            {
+                var webRoot = environment.WebRootPath
+                    ?? Path.Combine(environment.ContentRootPath, "wwwroot");
+                return Results.File(Path.Combine(webRoot, "index.html"), "text/html");
+            });
+
+            app.MapGet("/health", async (FraudWorkflowOrchestrator orchestrator, CancellationToken cancellationToken) =>
+            {
+                var available = await orchestrator.IsModelServiceAvailableAsync(cancellationToken);
+                return Results.Json(
+                    new Dictionary<string, string>
+                    {
+                        ["status"] = available ? "ok" : "unavailable",
+                    },
+                    statusCode: available ? StatusCodes.Status200OK : StatusCodes.Status503ServiceUnavailable);
+            });
+
+            app.MapPost("/report", async (HttpRequest request, CancellationToken cancellationToken) =>
+            {
+                var form = await request.ReadFormAsync(cancellationToken);
+                var question = form["question"].ToString().Trim();
+                var verdict = form["verdict"].ToString().Trim();
+                var answer = form["answer"].ToString().Trim();
+
+                if (string.IsNullOrWhiteSpace(answer))
+                {
+                    return Results.BadRequest("An investigation answer is required.");
+                }
+
+                var report =
+                    "AI Anti Fraud 3.0 review\n" +
+                    "========================\n\n" +
+                    $"Question: {question}\n" +
+                    $"Verdict: {verdict}\n\n" +
+                    $"Investigation summary:\n{answer}\n";
+
+                return Results.File(
+                    Encoding.UTF8.GetBytes(report),
+                    "text/plain; charset=utf-8",
+                    "ai-anti-fraud-review.txt");
+            });
+
+            app.MapPost("/", async (HttpRequest request, CancellationToken cancellationToken) =>
+            {
+                var form = await request.ReadFormAsync(cancellationToken);
+                var question = form["question"].ToString().Trim();
+                var location = string.IsNullOrWhiteSpace(question)
+                    ? "/"
+                    : $"/?question={Uri.EscapeDataString(question)}";
+
+                return Results.Redirect(location);
+            });
+
             // Accept fraud questions and send them to the orchestration layer, where the real genius lives.
             app.MapMethods("/api/fraud", new[] { "GET", "POST" }, async (HttpRequest request, FraudWorkflowOrchestrator orchestrator, CancellationToken cancellationToken) =>
             {
@@ -44,8 +102,16 @@ namespace Companion.Api
                 // Read POST JSON or a GET query string; flexibility is safe when I am the one allowing it.
                 if (HttpMethods.IsPost(request.Method))
                 {
-                    var body = await request.ReadFromJsonAsync<FraudQuestionRequest>(cancellationToken: cancellationToken) ?? new FraudQuestionRequest(null);
-                    question = (body.Question ?? string.Empty).Trim();
+                    if (request.ContentType?.StartsWith("application/x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase) == true)
+                    {
+                        var form = await request.ReadFormAsync(cancellationToken);
+                        question = form["question"].ToString().Trim();
+                    }
+                    else
+                    {
+                        var body = await request.ReadFromJsonAsync<FraudQuestionRequest>(cancellationToken: cancellationToken) ?? new FraudQuestionRequest(null);
+                        question = (body.Question ?? string.Empty).Trim();
+                    }
                 }
                 else
                 {
@@ -161,6 +227,37 @@ namespace Companion.Api
 
             var payload = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>(cancellationToken: cancellationToken);
             return payload?.GetValueOrDefault("result") ?? string.Empty;
+        }
+
+        public async Task<bool> IsModelServiceAvailableAsync(CancellationToken cancellationToken)
+        {
+            using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeoutSource.CancelAfter(TimeSpan.FromSeconds(2));
+
+            try
+            {
+                var client = _httpClientFactory.CreateClient();
+                using var response = await client.GetAsync($"{_modelServiceUrl}/health", timeoutSource.Token);
+                if (!response.IsSuccessStatusCode)
+                {
+                    return false;
+                }
+
+                var payload = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>(timeoutSource.Token);
+                return payload?.GetValueOrDefault("status") == "ok";
+            }
+            catch (HttpRequestException)
+            {
+                return false;
+            }
+            catch (JsonException)
+            {
+                return false;
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                return false;
+            }
         }
 
         // Give the model a question, run its query, then let it narrate the outcome like it wrote the database.
