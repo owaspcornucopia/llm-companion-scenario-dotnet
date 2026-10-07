@@ -21,6 +21,16 @@ Threat model template: [OWASP Threat Dragon EoP Games DFD](ThreatDragonModels/th
 
 The AI Anti-Fraud 3.0 .NET edition is deployed as a small microservice system. It separates request handling, model inference, and supporting services so the application can be scaled.
 
+## Screenshots Frontend
+
+Awaiting investigation:
+
+![Ready for requests](/images/screenshot1.png)
+
+Investigation complete:
+
+![Waiting for an answer](/images/screenshot2.png)
+
 ### AI Anti-Fraud 3.0 Components
 
 - `Api Proxy`
