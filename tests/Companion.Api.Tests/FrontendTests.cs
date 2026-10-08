@@ -46,7 +46,7 @@ public sealed class FrontendTests
         using var client = factory.CreateClient();
         using var content = new FormUrlEncodedContent(new Dictionary<string, string>
         {
-            ["question"] = "Check transaction TX-1002",
+            ["question"] = "Check transaction 74c9a7e9-e30c-48f0-8d8f-ec8771849d46",
         });
 
         var response = await client.PostAsync("/", content);
@@ -62,7 +62,7 @@ public sealed class FrontendTests
         using var client = factory.CreateClient();
         using var content = new FormUrlEncodedContent(new Dictionary<string, string>
         {
-            ["question"] = "Check transaction TX-1002",
+            ["question"] = "Check transaction 74c9a7e9-e30c-48f0-8d8f-ec8771849d46",
             ["verdict"] = "Investigation complete",
             ["answer"] = "transaction answer",
         });

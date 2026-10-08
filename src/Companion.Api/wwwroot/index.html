@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#082a4a">
     <meta name="description" content="A-Corp AI Anti Fraud 3.0 transaction review workspace">
     <title>AI Anti Fraud 3.0 | A-Corp</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=2">
     <script src="app.js" defer></script>
 </head>
 <body>
@@ -57,7 +57,7 @@
                         <label for="question">Investigation question</label>
                         <div class="textarea-wrap">
                             <span class="textarea-icon" aria-hidden="true">&#10022;</span>
-                            <textarea id="question" name="question" rows="4" maxlength="500" spellcheck="true">Is transaction 74c9a7e9-e30c-48f0-8d8f-ec8771849d46 fraudulent?</textarea>
+                            <textarea id="question" name="question" rows="4" maxlength="500" spellcheck="true">Is this transaction fraudulent?</textarea>
                         </div>
                         <p class="field-hint">Use natural language, such as asking whether a transaction is fraudulent.</p>
                         <button class="button button-primary" id="submit-button" type="submit">
@@ -76,23 +76,23 @@
                                 </a>
                             </li>
                             <li>
-                    <div class="sample-prompts">
-                        <p>Try a sample question</p>
-                        <ul class="sample-list">
-                            <li>
-                                <a class="sample-link" href="?question=Show%20all%20transactions" data-question="Show all transactions">
+                                <a class="sample-link" href="?question=Is%20transaction%2074c9a7e9-e30c-48f0-8d8f-ec8771849d46%20fraudulent%3F" data-question="Is transaction 74c9a7e9-e30c-48f0-8d8f-ec8771849d46 fraudulent?">
                                     <span class="sample-icon" aria-hidden="true">&#8599;</span>
-                                    Show all transactions
-                                </a>
-                            </li>
-                            <li>
-                                <a class="sample-link" href="?question=Is%20transaction%2074c9a7e9-e30c-48f0-8d8f-ec8771849d46%20fraudulent%3F" data-question="Is the transaction fraudulent?">
-                                    <span class="sample-icon" aria-hidden="true">&#8599;</span>
-                                    Is the transaction fraudulent?
+                                    Is this transaction fraudulent?
                                 </a>
                             </li>
                         </ul>
                     </div>
+                </section>
+
+                <section class="card result-card" id="review-result" aria-labelledby="result-heading">
+                    <div class="result-heading-row">
+                        <div>
+                            <div class="section-kicker"><span class="step-number step-number-muted">02</span> Review findings</div>
+                            <h2 id="result-heading">Review result</h2>
+                        </div>
+                        <span class="review-status" id="review-status">
+                            <span class="review-status-dot" id="review-status-dot" aria-hidden="true"></span>
                             <span id="review-status-label">Waiting for review</span>
                         </span>
                     </div>
